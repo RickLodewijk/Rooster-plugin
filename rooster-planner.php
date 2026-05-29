@@ -135,11 +135,40 @@ class Rooster_Planner
         add_action('admin_post_rooster_save_exceptions', [$this, 'handle_save_exceptions']);
         add_action('add_meta_boxes', [$this, 'register_meta_boxes']);
         add_action('save_post_page', [$this, 'save_form_page_meta'], 10, 2);
+        
+        // Toegevoegd aan template_redirect voor de beveiliging en formulierafhandeling
+        add_action('template_redirect', [$this, 'restrict_rooster_pages']);
         add_action('template_redirect', [$this, 'maybe_handle_form_submission']);
+        
         add_filter('the_content', [$this, 'maybe_append_form']);
         add_filter('the_content', [$this, 'maybe_append_overview']);
         add_shortcode('rooster_login', [$this, 'render_login_shortcode']);
         add_shortcode('rooster_overview', [$this, 'render_overview_shortcode']);
+    }
+
+    /**
+     * Stuurt niet-ingelogde gebruikers door naar de homepage als ze de formulier- of overzichtspagina bezoeken.
+     */
+    public function restrict_rooster_pages(): void
+    {
+        // We hoeven alleen te controleren als de gebruiker NIET is ingelogd
+        if (!is_user_logged_in()) {
+            
+            // Controleer of we ons op een WordPress pagina bevinden
+            if (is_page()) {
+                $page_id = get_the_ID();
+                
+                // Haal de meta-waarden op om te kijken of dit de afgeschermde pagina's zijn
+                $is_form_page     = get_post_meta($page_id, self::FORM_PAGE_META, true);
+                $is_overview_page = get_post_meta($page_id, self::OVERVIEW_PAGE_META, true);
+
+                // Als het een van deze pagina's is, stuur ze door naar de homepage
+                if ($is_form_page === '1' || $is_overview_page === '1') {
+                    wp_safe_redirect(home_url('/'));
+                    exit;
+                }
+            }
+        }
     }
 }
 
